@@ -1,0 +1,20 @@
+# Set default behavior to automatically normalize line endings
+* text=auto
+
+# Explicit text files
+*.py text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.tsv text eol=lf
+*.txt text eol=lf
+*.sh text eol=lf
+
+# Binary files
+*.pkl binary
+*.pickle binary
+*.joblib binary
+*.gz binary
+*.zip binary
+*.tar binary
+*.parquet binary
