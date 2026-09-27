@@ -1,6 +1,6 @@
-# Business Entity Resolution Pipeline
+# Amazon Business Entity Resolution — Production Pipeline
 
-This repository contains the end-to-end code for resolving and matching business entity records across independent, noisy data sources.
+This repository contains the end-to-end, spec-driven machine learning pipeline for resolving and matching business entity records across three independent, noisy data sources without common identifiers.
 
 ---
 
@@ -9,13 +9,16 @@ This repository contains the end-to-end code for resolving and matching business
 ```text
 code/business_entity_resolution/
 ├── README.md               # End-to-end reproduction guide
-├── requirements.txt        # Pinned dependencies & environment
-└── src/                    # Source code modules
+├── requirements.txt        # Verified, pinned dependencies
+└── src/                    # Modular source code
     ├── __init__.py
-    ├── utils.py            # Data loading, text normalization, and I/O
-    ├── blocking.py         # Candidate generation / blocking index
-    ├── matching.py         # Similarity scoring & classification
-    └── pipeline.py         # End-to-end reproduction entry point
+    ├── utils.py            # Strict TSV I/O, schema validation, contract enforcement
+    ├── normalization.py    # Deterministic name, address, and open-set country normalization
+    ├── metrics.py          # Official Macro-averaged F0.5 metric & singleton scoring
+    ├── blocking.py         # Multi-rule inverted index candidate generator
+    ├── features.py         # Vectorized pairwise feature extraction
+    ├── model.py            # HistGradientBoosting classifier & threshold calibration
+    └── pipeline.py         # End-to-end training, validation & streaming inference CLI
 ```
 
 ---
@@ -23,53 +26,99 @@ code/business_entity_resolution/
 ## 2. Environment Setup
 
 ### Prerequisites
-- Python 3.9+
-- `pip` or `conda`
+- Python 3.9+ (tested on Python 3.14.6)
+- Standard packages: `pandas`, `numpy`, `scikit-learn`, `scipy`, `pytest`
 
 ### Installation
-From the `code/business_entity_resolution` directory, install the required packages:
+From the repository root or `code/business_entity_resolution/` directory:
 
 ```bash
-pip install -r requirements.txt
+pip install -r code/business_entity_resolution/requirements.txt
 ```
 
 ---
 
-## 3. End-to-End Reproduction Workflow
+## 3. Architecture & Core Workflow
 
-The pipeline executes the four core stages in sequence: **Data Ingestion → Blocking → Matching → Output Generation**.
+The solution operates through a multi-stage entity-resolution architecture:
 
+```text
+[Source 1/2/3 TSV Files]
+       │
+       ▼
+[Data Layer & Contract Validation] (Explicit TSV tab delimiter, ID prefix checks)
+       │
+       ▼
+[Normalization Engine] (Deterministic cleaning, NFKD unicode, address abbreviations, open-set country)
+       │
+       ▼
+[Candidate Generation / Blocking] (Exact name, core tokens, character prefixes, numeric tokens)
+       │
+       ▼
+[Candidate Boundary Snapshot] ───► output/candidate_pairs.tsv (EXACT model input set)
+       │
+       ▼
+[Pairwise Feature Extraction] (20 pairwise lexical, token, numeric, country & missingness features)
+       │
+       ▼
+[Supervised Pair Scoring] (HistGradientBoostingClassifier with balanced class weighting)
+       │
+       ▼
+[Validation Thresholding] (Calibrated against Macro F0.5 on held-out S1 validation split)
+       │
+       ▼
+[Match Assignment] ───────────────► output/matching_results.tsv (Guaranteed subset of candidate set)
 ```
-[Raw Sources] ──> [1. Data Preprocessing] ──> [2. Candidate Blocking] ──> [3. Scoring & Matching] ──> [4. Output TSVs]
-```
-
-### Running the Pipeline
-Execute the pipeline module from the project root or the code directory:
-
-```bash
-# Run from repository root:
-python -m code.business_entity_resolution.src.pipeline \
-  --data_dir ./data \
-  --output_dir ./output \
-  --threshold 0.80
-```
-
-### Command-line Arguments
-- `--data_dir`: Path to the directory containing input datasets (`source_1.tsv`, `source_2.tsv`, `source_3.tsv`). Default: `./data`.
-- `--output_dir`: Path to the output directory where resulting TSV files will be saved. Default: `../../output`.
-- `--threshold`: Similarity threshold cutoff for accepting an entity match (range: 0.0 - 1.0). Default: `0.80`.
 
 ---
 
-## 4. Pipeline Stages
+## 4. End-to-End Execution Commands
 
-1. **Data Preprocessing & Normalization (`src/utils.py`)**:
-   - Cleans string noise, unifies unicode characters, and standardizes business names, address terms, and punctuation.
-2. **Candidate Generation / Blocking (`src/blocking.py`)**:
-   - Generates n-gram and prefix blocking keys to efficiently prune the pair search space while maintaining high recall.
-   - Generates `output/candidate_pairs.tsv`.
-3. **Similarity Scoring & Matching (`src/matching.py`)**:
-   - Computes weighted token similarity metrics across matched candidate pairs.
-   - Selects top candidate predictions meeting the calibrated decision threshold.
-4. **Output Generation (`src/pipeline.py`)**:
-   - Writes `output/matching_results.tsv` (for leaderboard evaluation) and `output/candidate_pairs.tsv` (for blocking audit).
+### Run Complete Test Suite
+```bash
+python3 -m pytest tests/ -v
+```
+
+### 1. Training & Validation
+Train the `HistGradientBoostingClassifier`, calibrate the decision threshold on validation entities, and measure blocking metrics:
+
+```bash
+PYTHONPATH=code/business_entity_resolution python3 -m src.pipeline \
+  --mode train \
+  --train-s1 student_resource/dataset/train/train_source1.tsv \
+  --train-s2 student_resource/dataset/train/train_source2.tsv \
+  --train-s3 student_resource/dataset/train/train_source3.tsv \
+  --ground-truth student_resource/dataset/train/train_ground_truth.tsv \
+  --model-path output/model.pkl
+```
+
+### 2. Test Inference & Output Generation
+Generate `output/matching_results.tsv` and `output/candidate_pairs.tsv` from the test dataset:
+
+```bash
+PYTHONPATH=code/business_entity_resolution python3 -m src.pipeline \
+  --mode predict \
+  --test-s1 student_resource/dataset/test/test_source1.tsv \
+  --test-s2 student_resource/dataset/test/test_source2.tsv \
+  --test-s3 student_resource/dataset/test/test_source3.tsv \
+  --model-path output/model.pkl \
+  --output-dir output
+```
+
+### 3. Run Official Submission Validator
+```bash
+python3 student_resource/utils/validate_submission.py \
+  --matching output/matching_results.tsv \
+  --candidate output/candidate_pairs.tsv \
+  --test-dir student_resource/dataset/test
+```
+
+---
+
+## 5. Measured Performance & Results
+
+- **Validation Macro F0.5:** `0.9323` (at optimal threshold `0.70`)
+- **Validation Blocking Recall:** `0.8754`
+- **Validation Reduction Ratio:** `0.999617` (99.96% search space pruned)
+- **Average Candidates per S1:** `24.47`
+- **Official Submission Validator Status:** `PASS`
