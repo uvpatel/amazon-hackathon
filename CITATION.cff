@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this software or entity resolution methodology, please cite it as below."
+authors:
+  - family-names: "Patel"
+    given-names: "Urvil"
+    email: "uvpatel7271@gmail.com"
+  - family-names: "Patel"
+    given-names: "Megh"
+    email: "meghpatel0009@gmail.com"
+title: "Amazon Business Entity Resolution: Production-Grade ML Entity Matching Pipeline"
+version: 1.0.0
+date-released: 2026-09-27
+url: "https://github.com/uvpatel/amazon-hackathon"
+repository-code: "https://github.com/uvpatel/amazon-hackathon"
+abstract: "A high-precision, scalable entity resolution pipeline built for the Amazon ML Challenge 2026. Resolves millions of noisy commercial business records across three disparate data sources without common identifiers, utilizing a multi-rule inverted index candidate generator and HistGradientBoostingClassifier optimized for Macro F0.5."
+keywords:
+  - "entity-resolution"
+  - "record-linkage"
+  - "machine-learning"
+  - "gradient-boosting"
+  - "blocking-algorithms"
+  - "macro-f05"
+  - "business-matching"
+license: "Apache-2.0"

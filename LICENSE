@@ -1,0 +1,8 @@
+# Project License Notice
+
+The software code and models in this repository are designed to comply with the Amazon ML Challenge 2026 guidelines requiring an **MIT** or **Apache-2.0** compatible license with <= 8 Billion parameters.
+
+A formal license selection (MIT vs. Apache 2.0) is currently pending maintainer confirmation.
+Please refer to [docs/LICENSE_SELECTION.md](docs/LICENSE_SELECTION.md) for details on the evaluation and options.
+
+Copyright (c) 2026 The Authors. All rights reserved.
