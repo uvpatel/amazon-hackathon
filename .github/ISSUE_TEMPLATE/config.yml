@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Community Discussions & Support
+    url: https://github.com/uvpatel/amazon-hackathon/blob/main/SUPPORT.md
+    about: Please ask general questions, setup inquiries, or challenge queries in Support.
+  - name: Official Challenge Inquiries
+    url: https://github.com/uvpatel/amazon-hackathon/blob/main/docs/requirement.md
+    about: Review the official Amazon ML Challenge 2026 problem specification.

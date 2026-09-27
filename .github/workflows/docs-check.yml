@@ -1,0 +1,58 @@
+name: Documentation & Test Verification
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Pytest Suite
+        run: |
+          python -m pytest tests/ -v
+
+      - name: Validate Markdown Links & Structure
+        run: |
+          python -c "
+import os, sys, re
+
+errors = []
+md_files = [os.path.join(dp, f) for dp, dn, filenames in os.walk('.') for f in filenames if f.endswith('.md')]
+
+for filepath in md_files:
+    if '.venv' in filepath or '.git' in filepath:
+        continue
+    with open(filepath, 'r', encoding='utf-8') as f:
+        content = f.read()
+    # Check for broken relative markdown links
+    links = re.findall(r'\[.*?\]\((?!http|mailto|#)(.*?)\)', content)
+    for link in links:
+        target = link.split('#')[0]
+        if not target:
+            continue
+        target_path = os.path.normpath(os.path.join(os.path.dirname(filepath), target))
+        if not os.path.exists(target_path):
+            errors.append(f'{filepath} -> Broken link: {link} (resolved: {target_path})')
+
+if errors:
+    print('Markdown link errors found:\n' + '\n'.join(errors))
+    sys.exit(1)
+print(f'Successfully verified {len(md_files)} markdown files with zero broken local links!')
+"
